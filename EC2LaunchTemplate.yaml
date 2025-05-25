@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  # VPC and Networking Resources
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${BaseName}-VPC"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${BaseName}-IGW"
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${BaseName}-PublicSubnet"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${BaseName}-PublicRT"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # Security Group to Allow SSH Access
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          Description: Allow SSH traffic
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0  # Allow from anywhere; for production, restrict this to specific IPs
+          Tags:
+            - Key: Name
+              Value: !Sub "${BaseName}-SG"
+
+        - IpProtocol: tcp
+          Description: Allow HTTP traffic
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0 # Allow from anywhere; for production, restrict this to specific IPs
+          Tags:
+            - Key: Name
+              Value: !Sub "${BaseName}-SG"
+
+        - IpProtocol: tcp
+          Description: Allow HTTPS traffic
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0 # Allow from anywhere; for production, restrict this to specific IPs
+          Tags:
+            - Key: Name
+              Value: !Sub "${BaseName}-SG"
+        
+        - IpProtocol: tcp
+          Description: Frontend Port
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0 # Allow from anywhere; for production, restrict this to specific IPs
+          Tags:
+            - Key: Name
+              Value: !Sub "${BaseName}-SG"
+
+        - IpProtocol: tcp
+          Description: Backend Port
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0 # Allow from anywhere; for production, restrict this to specific IPs
+          Tags:
+            - Key: Name
+              Value: !Sub "${BaseName}-SG"
+    
+        - IpProtocol: icmp
+          Description: Allow ICMP traffic
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0  # Allow from anywhere; for production, restrict this to specific IPs
+
+  # EC2 Instance Resource
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0866a3c8686eaeeba  # Replace with a valid AMI ID for your region (Ubuntu)
+      KeyName: Ansible
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref MySecurityGroup  # Attach the security group allowing SSH
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda  # Primary root volume
+          Ebs:
+            VolumeSize: 30  # Set size to 30 GB
+            VolumeType: gp3  # Use GP3 storage
+            DeleteOnTermination: true  # Automatically delete when instance terminates
+      Tags:
+        - Key: Name
+          Value: !Sub "${BaseName}-Instance"
+
+Parameters:
+  BaseName:
+    Type: String
+    Description: Base name for the created artifacts
+
+Outputs:
+  PublicSubnetId:
+    Description: ID of the public subnet
+    Value: !Ref PublicSubnet
+  VPCId:
+    Description: ID of the VPC
+    Value: !Ref MyVPC
+
