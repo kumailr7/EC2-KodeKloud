@@ -146,7 +146,7 @@ Parameters:
     Type: String
     Description: Base name for the created artifacts
 
-# Outputs Section
+# Outputs Section of the CloudFormation Template
 Outputs:
   PublicSubnetId:
     Description: ID of the public subnet
