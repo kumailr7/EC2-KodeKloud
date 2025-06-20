@@ -11,6 +11,7 @@ Resources:
         - Key: Name
           Value: !Sub "${BaseName}-VPC"
 
+  # Internet Gateway and Route Table for Public Subnet
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -24,6 +25,7 @@ Resources:
       VpcId: !Ref MyVPC
       InternetGatewayId: !Ref InternetGateway
 
+  # Public Subnet and Route Table
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -35,6 +37,7 @@ Resources:
         - Key: Name
           Value: !Sub "${BaseName}-PublicSubnet"
 
+  # Route Table for Public Subnet
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -43,6 +46,7 @@ Resources:
         - Key: Name
           Value: !Sub "${BaseName}-PublicRT"
 
+  # Route to Internet Gateway for Public Subnet
   PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
@@ -51,6 +55,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  # Associate Public Subnet with Route Table
   PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -135,10 +140,12 @@ Resources:
         - Key: Name
           Value: !Sub "${BaseName}-Instance"
 
+  # Launch Template for EC2 Instance
 Parameters:
   BaseName:
     Type: String
     Description: Base name for the created artifacts
+
 
 Outputs:
   PublicSubnetId:
